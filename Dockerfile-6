@@ -1,0 +1,26 @@
+FROM debian:buster-slim
+MAINTAINER "cytopia" <cytopia@everythingcli.org>
+
+RUN set -eux \
+	&& mkdir /home/site && mkdir /home/site/cache
+
+# Install Varnish
+RUN set -eux \
+	&& DEBIAN_FRONTEND=noninteractive apt-get update -qq \
+	&& DEBIAN_FRONTEND=noninteractive apt-get install -qq -y --no-install-recommends --no-install-suggests varnish \
+	&& rm -rf /var/lib/apt/lists/* \
+	&& varnishd -V 2>&1 | grep 'varnish-6'
+
+# Setting Configurations
+ENV VARNISH_CONFIG  /etc/varnish/default.vcl
+ENV CACHE_SIZE      128m
+ENV VARNISHD_PARAMS -p default_ttl=3600 -p default_grace=3600
+ENV BACKEND_HOST    localhost
+ENV BACKEND_PORT    80
+
+COPY data/default-6.vcl /etc/varnish/default.vcl
+COPY data/docker-entrypoint.sh /docker-entrypoint.sh
+
+EXPOSE 6081
+
+ENTRYPOINT ["/docker-entrypoint.sh"]

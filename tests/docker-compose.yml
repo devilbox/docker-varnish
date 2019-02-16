@@ -1,0 +1,16 @@
+version: '2.1'
+
+services:
+  httpd:
+    image: nginx
+    hostname: httpd
+  varnish:
+    image: devilbox/varnish:${VARNISH_SERVER}
+    hostname: varnish
+    environment:
+      - BACKEND_HOST=httpd
+      - BACKEND_PORT=80
+    ports:
+      - "8080:6081"
+    depends_on:
+      - httpd
