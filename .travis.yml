@@ -1,0 +1,102 @@
+---
+
+###
+### Travis settings
+###
+sudo: required
+language: python
+services:
+  - docker
+
+
+###
+### Build Matrix
+###
+env:
+  global:
+    # travis encrypt DOCKER_USERNAME=user
+    # travis encrypt DOCKER_PASSWORD=pass
+    # Must be regenerated when repository name/owner changes
+    # DOCKER_USERNAME
+    - secure: "J/18eDJUbBtEBWXCvVQp33zQG1Sgbjp+jMlkZi0ZBNyiRxLYu7FJIwRji2F4y95zVU3jRao0EkAWVRTU0jeQ3vf85CjxkCAJ7YH2RMolV5TCS3aNEqkPDn/Xe8gvwOc2mQcpdoznICe10kEgjBcNhJw4uKt6G2GEfSghUQ7Tyjz9kDtuKTvuL7d0/xabkF8XU2wjdQkEOB6VWGL3i+X9gBPaNjIN99UZgBNbv3l9TIVxr0sA8oFLD3sRIZ2Q/veL8qk/6sUJzPT95XI3vWnn4nkrM4bMyzo2R0D0bJOGv1gQlfvThwN7pQDeJOWCv5qPJz/Oxz2rnQsdiIXLborT3BRok2Kp1ESht+NUrWSlSJ0w1W5JutGeBJj0pTWUVcPDiSg77IRQymXbKegFxUKYI8kMqtMAvSSZ/wvZwHpoRrOtE06IPIpqtcdz9SUUjKXlhMZlbjtmegC110IMwlJd3Fgr+LCccYOqaBkg3i+/qqn6RKEe63FlACkr2YB4CYzZ1SRnOaGyBnFfw48QLLrLd7EDlQ9UEG7G+ynmdWmhaVFN7gIlbezElYLHwaYQ6oWuTsIdRvijSjAl0RNKG1/i5BJ4owStioBY1ptIU74kpUXXahB2K+4xlcg0TazulAdAUTVGH5OsTIJFQrjcUHmfXGawpk8b5nJleGfmaK7EjOc="
+    # DOCKER_PASSWORD
+    - secure: "YYwspCYnDXpiIh2xJ52B8Ah/7zqEizj8Ons05kNJmrolzRMLxucao65PEMZc4gznQuGkmGtsnainm5vHD+DcgvA7F1JAelFRg/wOULnYDSG7iQTcCm56QR3NjO88hf3yiU2ZveEORcA5+Rr+q544UzqtzPtCig/s7NFMUrSItDWiSJFbcvy1mY9AA8seYj3ouIF/bj4ttruGJo9cnRNYjpnjOk7sh24fSx7tv2VjMx2Gg6dlljns7ohOQNhjoSiUZsJzmwqe52KCR9c8x2VkjRazA5bemyCcAB+hn9VjW7/EojmYoe+2zOpsWG6ar0rL3ySrdYEtYTuYDYuhJPaYIvh9TWC07gwomOqp3iL7VSC+INjIQQmdfvhQtK4U7qdJs89CNwXwfBdrAPEl2T+ropJwQ3E6Hd7Yz3ZRwrc45K0r5cIQI27KRub5rp/iAghhzofdnItaPJ1cG58WyQ//Vq9FpMba6MO7KDujhWp10AoAlpfT3xSrbMsSy2hZRY8zRMn+DqjnDXbTb6gwkMiLbNXgIlelhK7B5Ioz/eaOPpZKqJW4vPygITYuD9em+uXDGPqIvP7+objJdgejWX173UlPSnEkNJtkdu4HK5sQscYRrsUx3ETcJeWyp1LMiYCQkYQPpMljxg+xWcbZcvX6dOSaPWG26JF1HapxLvWVdeM="
+  matrix:
+    - Varnish=4
+    - Varnish=5
+    - Varnish=6
+
+
+###
+### Install requirements
+###
+install:
+  # Get newer docker version
+  - max=100; i=0; while [ $i -lt $max ]; do if sudo apt-get update; then break; else i=$((i+1)); fi done
+  - max=100; i=0; while [ $i -lt $max ]; do if sudo apt-get -y -o Dpkg::Options::="--force-confnew" install docker-ce; then break; else i=$((i+1)); fi done
+  # Get newer docker compose version
+  - COMPOSE_VERSION="$( curl -sS https://raw.githubusercontent.com/cytopia/tools/master/docker-compose-versions | sh -s 1 )";
+  - until curl -L -sS https://github.com/docker/compose/releases/download/${COMPOSE_VERSION}/docker-compose-`uname -s`-`uname -m` > docker-compose; do sleep 5; done;
+  - chmod +x docker-compose;
+  - sudo mv -f docker-compose /usr/local/bin;
+  # Show installed versions
+  - docker version
+  - docker-compose version
+
+  # Disable services enabled by default
+  # http://docs.travis-ci.com/user/database-setup/#MySQL
+  - sudo /etc/init.d/httpd      stop || true
+  - sudo /etc/init.d/memcached  stop || true
+  - sudo /etc/init.d/mongodb    stop || true
+  - sudo /etc/init.d/mysql      stop || true
+  - sudo /etc/init.d/nginx      stop || true
+  - sudo /etc/init.d/postgresql stop || true
+  - sudo /etc/init.d/redis      stop || true
+  - sudo /etc/init.d/varnish    stop || true
+
+  - sudo service httpd      stop || true
+  - sudo service memcached  stop || true
+  - sudo service mongodb    stop || true
+  - sudo service mysql      stop || true
+  - sudo service nginx      stop || true
+  - sudo service postgresql stop || true
+  - sudo service redis      stop || true
+  - sudo service varnish    stop || true
+  - netstat -tulpn
+
+
+###
+### Check generation changes, build and test
+###
+before_script:
+  # Regenerate Dockerfiles and make sure nothing has changed (every stage)
+  - make build-${Varnish}
+  - make test-${Varnish}
+
+
+###
+### Push to Dockerhub
+###
+script:
+  - if [ "${TRAVIS_PULL_REQUEST}" == "false" ]; then
+      echo "${DOCKER_PASSWORD}" | docker login --username "${DOCKER_USERNAME}" --password-stdin &&
+      if [ "${TRAVIS_BRANCH}" == "master" ]; then
+        echo "Pushing latest";
+        make push-${Varnish};
+      elif [[ ${TRAVIS_BRANCH} =~ ^(release-[.0-9]+)$ ]]; then
+        echo "Pushing branch ${TRAVIS_BRANCH}";
+        make push-${Varnish} TAG=${Varnish}-${TRAVIS_BRANCH};
+      elif [ -n "${TRAVIS_TAG}" ]; then
+        echo "Pushing tag ${TRAVIS_TAG}";
+        make push-${Varnish} TAG=${Varnish}-${TRAVIS_TAG};
+      elif [ "${TRAVIS_EVENT_TYPE}" = "cron" ]; then
+        if MY_TAG="$( git describe --exact-match "$(git rev-parse HEAD)" 2>/dev/null )"; then
+          echo "Pushing cron tag ${MY_TAG}";
+          make push-${Varnish} TAG=${Varnish}-${MY_TAG};
+        fi
+      else
+        echo "Skipping push to dockerhub on normal branches";
+      fi
+    else
+      echo "Skipping push to dockerhub on PR";
+    fi
