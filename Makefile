@@ -98,7 +98,7 @@ test-5:
 test-6:
 	@$(MAKE) _clean
 	@$(MAKE) _start-test VERSION=6
-	if ! curl -IsS localhost:8080 | grep 'X-Server' | grep 'Varnish 4'; then \
+	if ! curl -IsS localhost:8080 | grep 'X-Server' | grep 'Varnish 6'; then \
 		curl -IsS localhost:8080 || true; \
 		curl -sS localhost:8080 || true; \
 		@$(MAKE) _clean; \
