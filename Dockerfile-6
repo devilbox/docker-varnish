@@ -2,7 +2,8 @@ FROM debian:buster-slim
 MAINTAINER "cytopia" <cytopia@everythingcli.org>
 
 RUN set -eux \
-	&& mkdir /home/site && mkdir /home/site/cache
+	&& mkdir -p /home/site/cache \
+	&& mkdir -p /etc/varnish.d
 
 # Install Varnish
 RUN set -eux \

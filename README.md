@@ -71,8 +71,15 @@ make build-6
 | VARNISH_CONFIG  | /etc/varnish/default.vcl                  | Path to Varnish configuration file |
 | CACHE_SIZE      | 128m                                      | Varnish Cache size |
 | VARNISHD_PARAMS | -p default_ttl=3600 -p default_grace=3600 | Additional Varnish startup parameter |
-| BACKEND_HOST    | localhost                                 | IP or hostname of backend server |
-| BACKEND_PORT    | 80                                        | Port of backend server |
+| BACKEND_HOST    | localhost                                 | IP or hostname of backend server.<br/><br/>**Important:** This variable only has effect when using the bundled config. If you change `VARNISH_CONFIG` you need to hard-code it in your custom configuration. |
+| BACKEND_PORT    | 80                                        | Port of backend server.<br/><br/>**Important:** This variable only has effect when using the bundled config. If you change `VARNISH_CONFIG` you need to hard-code it in your custom configuration. |
+
+
+## Mount points
+
+| Container path  | Description |
+|-----------------|-------------|
+| /etc/varnish.d/ | Mount your host directory with `*.vcl` files to this directory when you want to override the varnish config |
 
 
 ## Ports
@@ -99,6 +106,41 @@ Credits for `default.vcl` configuration goes here:
 | `devilbox/varnish:6`      | Varnish 6       |
 | `devilbox/varnish:5`      | Varnish 5       |
 | `devilbox/varnish:4`      | Varnish 4       |
+
+
+## Examples
+
+#### Use bundled config
+
+Serve Varnish on port `80`, use bundled config and forward Varnish requests to a webserver on
+`192.168.0.1` on port `8080` (which accepts HTTP and not HTTPS):
+```bash
+docker run -it -d --rm \
+  -e BACKEND_HOST=192.168.0.1 \
+  -e BACKEND_PORT=8080 \
+  -p "80:6081" \
+  devilbox/varnish:6
+```
+
+#### Use custom config
+
+**Important:**
+
+When using a custom config, the `BACKEND_HOST` and `BACKEND_PORT` variables will have no effect
+and you need to ensure to hard-code this in your custom config.
+
+Serve Varnish on port `80`, use custom config on host system (`/home/users/varnish/my-varnish.vcl`)
+and forward Varnish requests to a webserver on `192.168.0.1` on port `8080` (which accepts HTTP and not HTTPS).
+
+```bash
+docker run -it -d --rm \
+  -e BACKEND_HOST=192.168.0.1 \
+  -e BACKEND_PORT=8080 \
+  -e VARNISH_CONFIG=/etc/varnish.d/my-varnish.vcl \
+  -v "/home/users/varnish/:/etc/varnish.d/" \
+  -p "80:6081" \
+  devilbox/varnish:6
+```
 
 
 ## LICENSE
