@@ -362,7 +362,6 @@ sub vcl_deliver {
     unset resp.http.Server;
     unset resp.http.X-Drupal-Cache;
     unset resp.http.X-Varnish;
-    unset resp.http.Via;
     unset resp.http.Link;
     unset resp.http.X-Generator;
 	set resp.http.X-Server = "${VARNISH_VERSION}";
